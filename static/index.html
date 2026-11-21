@@ -85,6 +85,7 @@
     <label class="row check"><span>Ask before leaving the page</span><input id="set-warnOnLeave" type="checkbox"></label>
     <label class="row"><span>On-screen keys</span><select id="set-keyBar"><option value="auto">On touch devices</option><option value="on">Always</option><option value="off">Never</option></select></label>
     <label class="row check"><span>Option/Alt is Meta (macOS)</span><input id="set-macOptionIsMeta" type="checkbox"></label>
+    <label class="row check" id="mac-fn-row" hidden><span>fn&larr; / fn&rarr; switch tabs (instead of Home / End)</span><input id="set-macFnTabs" type="checkbox"></label>
     <label class="row check"><span>GPU rendering (WebGL)</span><input id="set-webgl" type="checkbox"></label>
     <h3>Security</h3>
     <div id="logins" class="logins"></div>
@@ -94,6 +95,7 @@
       <dt>Alt+Shift+W</dt><dd>Close terminal</dd>
       <dt>Alt+Shift+&larr; / &rarr;</dt><dd>Previous / next tab</dd>
       <dt id="key-switch">Ctrl+Shift+&larr; / &rarr;</dt><dd>Previous / next tab</dd>
+      <dt id="key-switch-all" hidden>Ctrl+Shift+&larr; / &rarr;</dt><dd id="key-switch-all-d" hidden>Previous / next tab</dd>
       <dt>Ctrl+Tab</dt><dd>Next tab (full screen / installed app)</dd>
       <dt>Alt+1 &hellip; 9</dt><dd>Go to tab</dd>
       <dt>Ctrl+Shift+C / V</dt><dd>Copy / paste</dd>

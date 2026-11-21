@@ -66,7 +66,7 @@
     theme: 'terminale', fontFamily: 'system', customFont: '', fontSize: 14, lineHeight: 1,
     cursorStyle: 'block', cursorBlink: true, scrollback: 10000, copyOnSelect: false,
     rightClickPaste: false, confirmClose: false, bell: 'visual', macOptionIsMeta: true, webgl: true,
-    allowClipboard: true, warnOnLeave: false, keyBar: 'auto'
+    allowClipboard: true, warnOnLeave: false, keyBar: 'auto', macFnTabs: true
   };
   var settings = {};
 
@@ -1007,18 +1007,22 @@
       if (ev.code === 'ArrowLeft') { ev.preventDefault(); step(-1); return false; }
       if (ev.code === 'ArrowRight') { ev.preventDefault(); step(1); return false; }
     }
-    // Previous / next tab with the platform's own modifier: Command+Left /
-    // Right on macOS (as in iTerm and Terminal.app), Ctrl+Shift+Left / Right
-    // on Windows and Linux (Ctrl+Tab and Ctrl+PageUp/Down, which native
-    // terminals use there, are kept by the browser).
-    if (ev.code === 'ArrowLeft' || ev.code === 'ArrowRight') {
-      var macCombo = IS_MAC && ev.metaKey && !ev.ctrlKey && !ev.altKey && !ev.shiftKey;
-      var pcCombo = !IS_MAC && ev.ctrlKey && ev.shiftKey && !ev.altKey && !ev.metaKey;
-      if (macCombo || pcCombo) {
-        ev.preventDefault();
-        step(ev.code === 'ArrowLeft' ? -1 : 1);
-        return false;
-      }
+    // Previous / next tab: Ctrl+Shift+Left / Right everywhere. (Ctrl+Tab and
+    // Ctrl+PageUp/Down, which native terminals use, are kept by the browser;
+    // Command+Left / Right is the browser's Back / Forward on a Mac.)
+    if ((ev.code === 'ArrowLeft' || ev.code === 'ArrowRight') && ev.ctrlKey && ev.shiftKey && !ev.altKey && !ev.metaKey) {
+      ev.preventDefault();
+      step(ev.code === 'ArrowLeft' ? -1 : 1);
+      return false;
+    }
+    // macOS: Fn+Left / Fn+Right. The browser never sees Fn -- macOS delivers
+    // those as Home and End -- so on a Mac plain Home / End switch tabs
+    // (a setting; turn it off to send Home / End to the shell instead).
+    if (IS_MAC && settings.macFnTabs && (ev.code === 'Home' || ev.code === 'End')
+        && !ev.ctrlKey && !ev.altKey && !ev.metaKey && !ev.shiftKey) {
+      ev.preventDefault();
+      step(ev.code === 'Home' ? -1 : 1);
+      return false;
     }
     // Ctrl+Tab / Ctrl+Shift+Tab reach the page only in full screen or as an
     // installed app; use them when they do.
@@ -1198,7 +1202,10 @@
   }).catch(function () { /* keep the local copy */ });
 
   // show the tab-switching keys of the platform in use
-  $('key-switch').textContent = IS_MAC ? '\u2318\u2190 / \u2318\u2192' : 'Ctrl+Shift+\u2190 / \u2192';
+  $('key-switch').textContent = IS_MAC ? 'fn\u2190 / fn\u2192' : 'Ctrl+Shift+\u2190 / \u2192';
+  $('mac-fn-row').hidden = !IS_MAC;
+  $('key-switch-all').hidden = !IS_MAC;
+  $('key-switch-all-d').hidden = !IS_MAC;
 
   // ---- start -----------------------------------------------------------------
 
