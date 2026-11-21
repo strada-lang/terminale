@@ -1,0 +1,5 @@
+terminale.so
+terminale.conf
+static/*.gz
+.build.log
+node_modules/
