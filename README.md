@@ -169,7 +169,9 @@ sign-ins are cleaned up automatically.
 | Alt+Shift+S | split view on / off |
 | Ctrl+Shift+F | search scrollback |
 | Alt+Shift+Left / Right | previous / next tab |
-| Cmd+Left / Cmd+Right | previous / next tab (macOS) |
+| Cmd+Left / Cmd+Right | previous / next tab on macOS |
+| Ctrl+Shift+Left / Right | previous / next tab on Windows and Linux |
+| Ctrl+Tab / Ctrl+Shift+Tab | next / previous tab, in full screen or as an installed app (browsers keep these keys otherwise) |
 | Alt+1 ... Alt+9 | go to tab |
 | Ctrl+Shift+C / Ctrl+Shift+V | copy selection / paste |
 | Ctrl+Shift+, | open / close settings |

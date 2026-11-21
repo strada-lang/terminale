@@ -42,6 +42,8 @@
   var HIGH_WATER = 1024 * 1024;   // bytes handed to xterm but not yet rendered
   var LOW_WATER = 128 * 1024;
   var TOUCH = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  var PLATFORM = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  var IS_MAC = /mac|iphone|ipad/i.test(PLATFORM);
 
   // ---- settings ---------------------------------------------------------------
   // Kept in localStorage (instant on load) and in a file on the server
@@ -1005,10 +1007,24 @@
       if (ev.code === 'ArrowLeft') { ev.preventDefault(); step(-1); return false; }
       if (ev.code === 'ArrowRight') { ev.preventDefault(); step(1); return false; }
     }
-    // macOS: Command+Left / Right, as in iTerm and Terminal.app
-    if (ev.metaKey && !ev.ctrlKey && !ev.altKey && !ev.shiftKey && (ev.code === 'ArrowLeft' || ev.code === 'ArrowRight')) {
+    // Previous / next tab with the platform's own modifier: Command+Left /
+    // Right on macOS (as in iTerm and Terminal.app), Ctrl+Shift+Left / Right
+    // on Windows and Linux (Ctrl+Tab and Ctrl+PageUp/Down, which native
+    // terminals use there, are kept by the browser).
+    if (ev.code === 'ArrowLeft' || ev.code === 'ArrowRight') {
+      var macCombo = IS_MAC && ev.metaKey && !ev.ctrlKey && !ev.altKey && !ev.shiftKey;
+      var pcCombo = !IS_MAC && ev.ctrlKey && ev.shiftKey && !ev.altKey && !ev.metaKey;
+      if (macCombo || pcCombo) {
+        ev.preventDefault();
+        step(ev.code === 'ArrowLeft' ? -1 : 1);
+        return false;
+      }
+    }
+    // Ctrl+Tab / Ctrl+Shift+Tab reach the page only in full screen or as an
+    // installed app; use them when they do.
+    if (ev.ctrlKey && !ev.altKey && !ev.metaKey && ev.code === 'Tab') {
       ev.preventDefault();
-      step(ev.code === 'ArrowLeft' ? -1 : 1);
+      step(ev.shiftKey ? -1 : 1);
       return false;
     }
     if (ev.altKey && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey && /^Digit[1-9]$/.test(ev.code)) {
@@ -1180,6 +1196,9 @@
       syncPanel();
     }
   }).catch(function () { /* keep the local copy */ });
+
+  // show the tab-switching keys of the platform in use
+  $('key-switch').textContent = IS_MAC ? '\u2318\u2190 / \u2318\u2192' : 'Ctrl+Shift+\u2190 / \u2192';
 
   // ---- start -----------------------------------------------------------------
 
