@@ -1010,9 +1010,12 @@
     // Previous / next tab: Ctrl+Shift+Left / Right everywhere. (Ctrl+Tab and
     // Ctrl+PageUp/Down, which native terminals use, are kept by the browser;
     // Command+Left / Right is the browser's Back / Forward on a Mac.)
-    if ((ev.code === 'ArrowLeft' || ev.code === 'ArrowRight') && ev.ctrlKey && ev.shiftKey && !ev.altKey && !ev.metaKey) {
+    // Ctrl+Shift+[ / ] ("{" / "}") do the same: the Ctrl form of Command+Shift+[
+    // / ], the usual tab keys on a Mac, which browsers keep for their own tabs.
+    if ((ev.code === 'ArrowLeft' || ev.code === 'ArrowRight' || ev.code === 'BracketLeft' || ev.code === 'BracketRight')
+        && ev.ctrlKey && ev.shiftKey && !ev.altKey && !ev.metaKey) {
       ev.preventDefault();
-      step(ev.code === 'ArrowLeft' ? -1 : 1);
+      step(ev.code === 'ArrowLeft' || ev.code === 'BracketLeft' ? -1 : 1);
       return false;
     }
     // macOS: Fn+Left / Fn+Right. The browser never sees Fn -- macOS delivers

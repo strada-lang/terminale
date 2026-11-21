@@ -169,7 +169,7 @@ sign-ins are cleaned up automatically.
 | Alt+Shift+S | split view on / off |
 | Ctrl+Shift+F | search scrollback |
 | Alt+Shift+Left / Right | previous / next tab |
-| Ctrl+Shift+Left / Right | previous / next tab |
+| Ctrl+Shift+Left / Right, or Ctrl+Shift+{ / } | previous / next tab |
 | fn+Left / fn+Right | previous / next tab on macOS. The browser receives these as Home / End, so on a Mac those keys switch tabs instead of going to the shell; turn that off in Settings if you need Home / End. (Cmd+Left / Right is the browser's Back / Forward.) |
 | Ctrl+Tab / Ctrl+Shift+Tab | next / previous tab, in full screen or as an installed app (browsers keep these keys otherwise) |
 | Alt+1 ... Alt+9 | go to tab |
