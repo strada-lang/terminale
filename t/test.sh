@@ -11,7 +11,7 @@ CANNOLI="${CANNOLI:-$(command -v cannoli || true)}"
 export CANNOLI
 echo "Using $CANNOLI"
 [ -f "$HERE/terminale.so" ] || "$HERE/build.sh" --fast >/dev/null
-S="$(mktemp -d)"; MPID=""
+S="$(mktemp -d /tmp/terminale-test.XXXXXX)"; MPID=""
 cleanup() {
     [ -n "$MPID" ] && kill "$MPID" 2>/dev/null
     for sock in "$S"/state*/sessions/*.sock; do [ -S "$sock" ] && python3 -c "
@@ -43,7 +43,12 @@ run "loop workers, HTTPS, password hash" "https://127.0.0.1:$((P+1))/" 'hashed p
 printf 'dir = %s/state3\n' "$S" > "$S/c.conf"
 HOME="$S/home" TERMINALE_USER=tester TERMINALE_PASSWORD='env-pw' run "environment login, --ssl (self-signed HTTPS)" "https://127.0.0.1:$((P+2))/" 'env-pw' -c "$S/c.conf" -p $((P+2)) --ssl
 SANS=$(openssl x509 -in "$S/home/.terminale/tls/cert.pem" -noout -ext subjectAltName 2>/dev/null)
-echo "$SANS" | grep -q "DNS:localhost" && echo "$SANS" | grep -q "IP Address:127.0.0.1" && [ "$(stat -c %a "$S/home/.terminale/tls/key.pem")" = 600 ] \
+if [ "$(uname -s)" = Darwin ]; then
+    key_mode="$(stat -f %Lp "$S/home/.terminale/tls/key.pem")"
+else
+    key_mode="$(stat -c %a "$S/home/.terminale/tls/key.pem")"
+fi
+echo "$SANS" | grep -q "DNS:localhost" && echo "$SANS" | grep -q "IP Address:127.0.0.1" && [ "$key_mode" = 600 ] \
     && echo "  PASS: self-signed certificate generated (localhost + 127.0.0.1, private key 0600)" || { echo "  FAIL: self-signed certificate: $SANS"; FAILS=$((FAILS+1)); }
 grep -q "SHA-256 " "$S/server.log" && echo "  PASS: fingerprint printed at start" || { echo "  FAIL: no fingerprint in the start output"; FAILS=$((FAILS+1)); }
 echo "== classic workers, login on the -l line"

@@ -39,7 +39,15 @@
 # or use ./start.sh. See README.md.
 
 __C__ {
+#ifdef __APPLE__
+#include <libproc.h>
+#include <sys/event.h>
+#include <sys/proc_info.h>
+#include <util.h>
+#else
 #include <pty.h>
+#include <sys/epoll.h>
+#endif
 #include <termios.h>
 #include <poll.h>
 #include <signal.h>
@@ -55,7 +63,6 @@ __C__ {
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -257,15 +264,21 @@ static size_t tm_modes_restore(char *out, size_t cap) {
 /* Working directory of the foreground program (what "here" means to the
  * user): for the file browser and uploads. */
 static void tm_session_cwd(int master, pid_t child, char *out, size_t cap) {
-    char link[64];
     out[0] = 0;
     pid_t fg = tcgetpgrp(master);
     pid_t tries[2] = { fg, child };
     for (int i = 0; i < 2 && !out[0]; i++) {
         if (tries[i] <= 0) continue;
+#ifdef __APPLE__
+        struct proc_vnodepathinfo paths;
+        if (proc_pidinfo(tries[i], PROC_PIDVNODEPATHINFO, 0, &paths, sizeof(paths)) == sizeof(paths))
+            strlcpy(out, paths.pvi_cdir.vip_path, cap);
+#else
+        char link[64];
         snprintf(link, sizeof(link), "/proc/%d/cwd", (int)tries[i]);
         ssize_t n = readlink(link, out, cap - 1);
         if (n > 0) out[n] = 0; else out[0] = 0;
+#endif
     }
 }
 
@@ -275,6 +288,41 @@ static void tm_set_size(int master, int cols, int rows) {
     ws.ws_col = (unsigned short)cols;
     ws.ws_row = (unsigned short)rows;
     ioctl(master, TIOCSWINSZ, &ws);
+}
+
+#ifdef __APPLE__
+/* Darwin sets close-on-exec and nonblocking mode after opening a socket. */
+static int tm_prepare_fd(int fd, int nonblocking) {
+    if (fd < 0) return -1;
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
+        close(fd);
+        return -1;
+    }
+    if (nonblocking) {
+        int flags = fcntl(fd, F_GETFL);
+        if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+            close(fd);
+            return -1;
+        }
+    }
+    return fd;
+}
+#endif
+
+static int tm_unix_socket(int nonblocking) {
+#ifdef __APPLE__
+    return tm_prepare_fd(socket(AF_UNIX, SOCK_STREAM, 0), nonblocking);
+#else
+    return socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | (nonblocking ? SOCK_NONBLOCK : 0), 0);
+#endif
+}
+
+static int tm_accept_client(int listener) {
+#ifdef __APPLE__
+    return tm_prepare_fd(accept(listener, NULL, NULL), 1);
+#else
+    return accept4(listener, NULL, NULL, SOCK_CLOEXEC | SOCK_NONBLOCK);
+#endif
 }
 
 static void tm_host_run(const char *sockpath, int cols, int rows, const char *shell_cfg, int idle_timeout) {
@@ -287,7 +335,7 @@ static void tm_host_run(const char *sockpath, int cols, int rows, const char *sh
     sa.sun_family = AF_UNIX;
     if (strlen(sockpath) >= sizeof(sa.sun_path)) _exit(2);
     strcpy(sa.sun_path, sockpath);
-    int lfd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
+    int lfd = tm_unix_socket(1);
     if (lfd < 0) _exit(2);
     unlink(sockpath);
     umask(077);
@@ -456,7 +504,7 @@ static void tm_host_run(const char *sockpath, int cols, int rows, const char *sh
 
         /* new client: attach marker, then the scrollback */
         if (pr > 0 && (pf[0].revents & POLLIN)) {
-            int cfd = accept4(lfd, NULL, NULL, SOCK_CLOEXEC | SOCK_NONBLOCK);
+            int cfd = tm_accept_client(lfd);
             if (cfd >= 0) {
                 if (tm_nclients >= TM_MAXC) {
                     close(cfd);
@@ -577,7 +625,7 @@ static int tm_unix_connect(const char *path) {
     sa.sun_family = AF_UNIX;
     if (strlen(path) >= sizeof(sa.sun_path)) return -1;
     strcpy(sa.sun_path, path);
-    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    int fd = tm_unix_socket(0);
     if (fd < 0) return -1;
     if (connect(fd, (struct sockaddr *)&sa, sizeof(sa)) != 0) { close(fd); return -1; }
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
@@ -828,11 +876,19 @@ func tm_poll(int $fd, int $ms) int {
     return $r;
 }
 
-# An epoll fd that becomes readable when either fd is: lets one wait cover
-# both the browser connection and the session host.
+# A readiness queue lets one wait cover the browser and the session host.
 func tm_ep_new(int $a, int $b) int {
     my scalar $ep = -1;
     __C__ {
+#ifdef __APPLE__
+        int e = tm_prepare_fd(kqueue(), 0);
+        if (e >= 0) {
+            struct kevent events[2];
+            EV_SET(&events[0], (int)strada_to_int(a), EVFILT_READ, EV_ADD, 0, 0, NULL);
+            EV_SET(&events[1], (int)strada_to_int(b), EVFILT_READ, EV_ADD, 0, 0, NULL);
+            if (kevent(e, events, 2, NULL, 0, NULL) < 0) { close(e); e = -1; }
+        }
+#else
         int e = epoll_create1(EPOLL_CLOEXEC);
         if (e >= 0) {
             struct epoll_event ev;
@@ -844,19 +900,27 @@ func tm_ep_new(int $a, int $b) int {
             int r2 = epoll_ctl(e, EPOLL_CTL_ADD, ev.data.fd, &ev);
             if (r1 != 0 || r2 != 0) { close(e); e = -1; }
         }
+#endif
         ep = strada_new_int(e);
     }
     return $ep;
 }
 
-# Watch ($on = 1) or ignore ($on = 0) $fd in the epoll set.
+# Watch ($on = 1) or ignore ($on = 0) $fd in the readiness queue.
 func tm_ep_set(int $ep, int $fd, int $on) void {
     __C__ {
+#ifdef __APPLE__
+        struct kevent ev;
+        EV_SET(&ev, (int)strada_to_int(fd), EVFILT_READ,
+               strada_to_int(on) ? EV_ENABLE : EV_DISABLE, 0, 0, NULL);
+        kevent((int)strada_to_int(ep), &ev, 1, NULL, 0, NULL);
+#else
         struct epoll_event ev;
         memset(&ev, 0, sizeof(ev));
         ev.events = strada_to_int(on) ? EPOLLIN : 0;
         ev.data.fd = (int)strada_to_int(fd);
         epoll_ctl((int)strada_to_int(ep), EPOLL_CTL_MOD, ev.data.fd, &ev);
+#endif
     }
 }
 
@@ -1724,7 +1788,7 @@ func tm_save_settings(scalar $c) str {
 #   to the host:  I input, R "cols rows", T title, K kill
 #   flow control: P pause output, p resume (the browser's terminal is behind)
 # Host frames are forwarded as type byte + payload: S attach, O output, X exit.
-# One wait covers both directions (an epoll fd over the two sockets), parking
+# One wait covers both directions through a readiness queue, parking
 # the green task in loop workers and polling in classic workers.
 # ---------------------------------------------------------------------------
 

@@ -62,6 +62,10 @@ compiler and C headers for OpenSSL and libcrypt to build; an installed
 to run. `build.sh` checks for what it needs and says what is missing;
 `start.sh` builds `terminale.so` itself if you skip the build step.
 
+On macOS, install the Xcode Command Line Tools and run
+`brew install openssl@3 libxcrypt`. For custom installations, set
+`OPENSSL_PREFIX` and `LIBXCRYPT_PREFIX` to their installation prefixes.
+
 | | |
 |---|---|
 | `./build.sh` or `make` | optimized build |
