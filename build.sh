@@ -1,4 +1,6 @@
 #!/bin/bash
+# Terminale - Copyright (c) 2026 Michael J. Flickinger
+# Licensed under the GNU General Public License, version 2 (see LICENSE).
 # Build Terminale: terminale.so plus the precompressed static files.
 #
 #   ./build.sh            optimized build
@@ -18,7 +20,7 @@ for arg in "$@"; do
         --fast) FLAGS="-O0 --no-lto" ;;
         --test) RUN_TESTS=1 ;;
         --clean) rm -f terminale.so static/*.gz; echo "Cleaned."; exit 0 ;;
-        -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '4,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "build.sh: unknown option $arg (try --help)" >&2; exit 2 ;;
     esac
 done

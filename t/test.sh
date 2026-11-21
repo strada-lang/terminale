@@ -1,4 +1,6 @@
 #!/bin/bash
+# Terminale - Copyright (c) 2026 Michael J. Flickinger
+# Licensed under the GNU General Public License, version 2 (see LICENSE).
 # End-to-end tests: loop and classic workers, HTTP and HTTPS, password and
 # password-hash logins. Uses a throwaway state directory.
 HERE="$(cd "$(dirname "$0")/.." && pwd)"

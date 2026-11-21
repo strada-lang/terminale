@@ -1,3 +1,19 @@
+/*
+ Terminale - a web terminal for Cannoli.
+ Copyright (c) 2026 Michael J. Flickinger
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, version 2.
+
+ This program is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
 /* Terminale - browser side.
  *
  * Every tab is one server-side session (a shell on a PTY that keeps running
@@ -988,6 +1004,12 @@
       if (ev.code === 'KeyS') { ev.preventDefault(); toggleSplit(tab); return false; }
       if (ev.code === 'ArrowLeft') { ev.preventDefault(); step(-1); return false; }
       if (ev.code === 'ArrowRight') { ev.preventDefault(); step(1); return false; }
+    }
+    // macOS: Command+Left / Right, as in iTerm and Terminal.app
+    if (ev.metaKey && !ev.ctrlKey && !ev.altKey && !ev.shiftKey && (ev.code === 'ArrowLeft' || ev.code === 'ArrowRight')) {
+      ev.preventDefault();
+      step(ev.code === 'ArrowLeft' ? -1 : 1);
+      return false;
     }
     if (ev.altKey && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey && /^Digit[1-9]$/.test(ev.code)) {
       var n = parseInt(ev.code.slice(5), 10) - 1;

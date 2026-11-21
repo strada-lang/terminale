@@ -1,4 +1,6 @@
 #!/bin/bash
+# Terminale - Copyright (c) 2026 Michael J. Flickinger
+# Licensed under the GNU General Public License, version 2 (see LICENSE).
 # Turn on two-factor sign-in: generates a secret for an authenticator app
 # (Google Authenticator, Aegis, 1Password, ...).
 #

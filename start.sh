@@ -1,4 +1,6 @@
 #!/bin/bash
+# Terminale - Copyright (c) 2026 Michael J. Flickinger
+# Licensed under the GNU General Public License, version 2 (see LICENSE).
 # Start Cannoli with the Terminale web terminal.
 #
 #   ./start.sh -u me                       # asks for a password, http://127.0.0.1:7681

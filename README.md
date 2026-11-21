@@ -169,6 +169,7 @@ sign-ins are cleaned up automatically.
 | Alt+Shift+S | split view on / off |
 | Ctrl+Shift+F | search scrollback |
 | Alt+Shift+Left / Right | previous / next tab |
+| Cmd+Left / Cmd+Right | previous / next tab (macOS) |
 | Alt+1 ... Alt+9 | go to tab |
 | Ctrl+Shift+C / Ctrl+Shift+V | copy selection / paste |
 | Ctrl+Shift+, | open / close settings |
@@ -235,6 +236,11 @@ Run it with `make test`.
 split view, detach and re-attach, tab menu and reordering, touch keys, 20
 tabs): `npm i puppeteer-core`, start a server, then
 `node t/browser.js http://127.0.0.1:7681/ USER PASSWORD`.
+
+## License
+
+Terminale is free software, licensed under the GNU General Public License,
+version 2 (see [LICENSE](LICENSE)). Copyright (c) 2026 Michael J. Flickinger.
 
 ## Third-party
 
