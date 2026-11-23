@@ -917,11 +917,30 @@ func tm_ep_set(int $ep, int $fd, int $on) void {
 #else
         struct epoll_event ev;
         memset(&ev, 0, sizeof(ev));
-        ev.events = strada_to_int(on) ? EPOLLIN : 0;
+        /* paused: no data wanted, but still wake when the host goes away */
+        ev.events = strada_to_int(on) ? EPOLLIN : EPOLLRDHUP;
         ev.data.fd = (int)strada_to_int(fd);
         epoll_ctl((int)strada_to_int(ep), EPOLL_CTL_MOD, ev.data.fd, &ev);
 #endif
     }
+}
+
+# 1 if the peer of $fd has closed its end (the session host exited).
+# On Linux a paused relay is woken for this at once (EPOLLRDHUP above); on
+# macOS it is noticed at the relay's next periodic wake-up (5 seconds).
+func tm_hup(int $fd) int {
+    my scalar $r = 0;
+    __C__ {
+#ifdef POLLRDHUP
+        short want = POLLRDHUP;
+#else
+        short want = 0;          /* macOS: POLLHUP is reported without asking */
+#endif
+        struct pollfd p = { (int)strada_to_int(fd), want, 0 };
+        int n = poll(&p, 1, 0);
+        r = strada_new_int(n > 0 && (p.revents & (want | POLLHUP | POLLERR)) ? 1 : 0);
+    }
+    return $r;
 }
 
 # Session ids (the 16 hex digits of s_<id>.sock) in $dir, newline-separated.
@@ -1857,6 +1876,10 @@ func tm_attach(scalar $c, str $id) str {
             }
         }
 
+        # A tab that asked for a pause (it is busy, or hidden) must still be
+        # told when its session ends: deliver what is left, then the exit.
+        if ($paused == 1 && tm_hup($hfd) == 1) { $paused = 0; }
+
         # host -> browser
         my int $rounds = 0;
         while ($alive == 1 && $paused == 0 && $rounds < 8) {
@@ -1940,7 +1963,21 @@ func tm_page(str $file) str {
 # Entry point
 # ---------------------------------------------------------------------------
 
+# Cannoli's library entry point. Every response here is the framed string
+# tm_resp() builds. A Cannoli with library interface 2 takes a framed
+# response only when it is handed over explicitly ($c->framed_response),
+# because it no longer searches a returned string for directives; an older
+# Cannoli reads it from the return value.
 func cannoli_dispatch(scalar $c) str {
+    my str $r = tm_dispatch($c);
+    if (core::byte_length($r) == 0) { return ""; }
+    if (exists(%{$c}, "_abi") && $c->{"_abi"} >= 2 && substr($r, 0, 9) eq "RESPONSE:") {
+        return $c->framed_response($r);
+    }
+    return $r;
+}
+
+func tm_dispatch(scalar $c) str {
     if ($g_tm_ready != 1) { return ""; }
     my str $full = $c->path();
     my str $p = $c->path_info();

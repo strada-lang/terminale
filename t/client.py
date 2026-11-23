@@ -246,6 +246,17 @@ r2, _ = call("GET", "/api/sessions", cookie=cookie2)
 r3, _ = call("GET", "/api/sessions", cookie=cookie)
 check(json.loads(body).get("revoked") == 1 and r2.status == 401 and r3.status == 200, "sign out everywhere else")
 
+print("a paused tab still learns that its session ended")
+r, body = call("POST", "/api/sessions", {"cols": 80, "rows": 24}, cookie=cookie)
+sid3 = json.loads(body)["id"]
+ws3 = WS("/ws/" + sid3, cookie)
+ws3.drain()
+ws3.send(b"P")                      # the browser asks for a pause (a busy or hidden tab)
+time.sleep(0.3)
+call("POST", "/api/sessions/" + sid3 + "/kill", cookie=cookie)
+check(ws3.expect(b"X", timeout=4) is not None, "exit reported to a tab that had paused output")
+ws3.close()
+
 print("second tab, kill, exit")
 r, body = call("POST", "/api/sessions", {"cols": 80, "rows": 24}, cookie=cookie)
 sid2 = json.loads(body)["id"]
